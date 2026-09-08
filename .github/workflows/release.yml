@@ -41,3 +41,32 @@ jobs:
 
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          ARCHIVE="unfocol-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
+          tar -czf "$ARCHIVE" -C target/${{ matrix.target }}/release unfocol
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
+          else
+            shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
+          fi
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $archive = "unfocol-${{ github.ref_name }}-${{ matrix.target }}.zip"
+          Compress-Archive -Path "target/${{ matrix.target }}/release/unfocol.exe" -DestinationPath $archive
+          (Get-FileHash -Algorithm SHA256 $archive).Hash | Out-File "$archive.sha256"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: unfocol-${{ matrix.target }}
+          path: |
+            unfocol-*.tar.gz
+            unfocol-*.tar.gz.sha256
+            unfocol-*.zip
+            unfocol-*.zip.sha256
+          if-no-files-found: error
