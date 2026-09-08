@@ -23,7 +23,7 @@ jobs:
             target: aarch64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Linux GUI dependencies
         if: matrix.os == 'ubuntu-latest'
@@ -40,4 +40,4 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release --locked --target ${{ matrix.target }} --features glow
+        run: cargo build --release --locked --target ${{ matrix.target }}
