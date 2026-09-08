@@ -1,3 +1,11 @@
+//! Unfocol is a minimalist focus timer: a colored window that shifts through
+//! a theme's gradient as a focus session progresses, so the passage of time
+//! is visible at a glance without reading a clock.
+//!
+//! This crate is the library half of the app — theme and settings loading
+//! ([`load_themes`], [`load_settings`]), the color/theme model
+//! ([`Color`], [`Theme`]), the countdown [`Timer`], and the [`Unfocol`]
+//! `eframe::App` itself — while `main.rs` just wires it up and runs it.
 mod app;
 mod clock;
 mod color;

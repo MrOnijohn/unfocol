@@ -4,6 +4,8 @@ use eframe::egui::{self, Align2, Area, Frame, Id, Margin, Vec2};
 use std::time::{Duration, Instant};
 
 impl Unfocol<fn() -> Instant> {
+    /// Draws the remaining-time overlay, according to `ShowClock`: never,
+    /// always, or only while the mouse is hovering the window.
     pub fn render_clock(&self, ctx: &egui::Context) {
         match self.config.settings.show_clock {
             ShowClock::Never => {}

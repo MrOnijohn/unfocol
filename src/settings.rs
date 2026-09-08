@@ -24,11 +24,13 @@ impl Unfocol<fn() -> Instant> {
         }
     }
 
+    /// Shows the settings viewport, if `show_settings` is set, and saves
+    /// `settings.toml` to disk whenever a control in it changes.
     pub fn render_settings(&mut self, ctx: &egui::Context) {
         if self.config.settings.show_settings {
             let viewport_id = ViewportId::from_hash_of("settings");
             let builder = ViewportBuilder::default()
-                .with_app_id("se.johnkinell.Unfocol.Setttings")
+                .with_app_id("se.johnkinell.Unfocol.Settings")
                 .with_title("Unfocol settings")
                 .with_active(true)
                 .with_decorations(true)
@@ -59,7 +61,7 @@ impl Unfocol<fn() -> Instant> {
                             // Row 1
                             let theme_before = self.config.settings.selected_theme.clone();
                             egui::ComboBox::from_label("Choose theme")
-                                .selected_text(format!("{:?}", self.config.settings.selected_theme))
+                                .selected_text(&self.config.settings.selected_theme)
                                 .show_ui(ui, |ui| {
                                     for theme in self.config.themes.keys() {
                                         ui.selectable_value(
@@ -99,22 +101,22 @@ impl Unfocol<fn() -> Instant> {
                             // Row 4
                             let clock_before = self.config.settings.show_clock.clone();
                             egui::ComboBox::from_label("Show remaining time")
-                                .selected_text(format!("{:?}", self.config.settings.show_clock))
+                                .selected_text(self.config.settings.show_clock.to_string())
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
                                         &mut self.config.settings.show_clock,
                                         ShowClock::OnMouseOver,
-                                        "On mouse over",
+                                        ShowClock::OnMouseOver.to_string(),
                                     );
                                     ui.selectable_value(
                                         &mut self.config.settings.show_clock,
                                         ShowClock::Never,
-                                        "Never",
+                                        ShowClock::Never.to_string(),
                                     );
                                     ui.selectable_value(
                                         &mut self.config.settings.show_clock,
                                         ShowClock::Always,
-                                        "Always",
+                                        ShowClock::Always.to_string(),
                                     );
                                 });
                             if clock_before != self.config.settings.show_clock {
@@ -141,6 +143,21 @@ impl Unfocol<fn() -> Instant> {
     }
 }
 
+/// Writes `toml_str` to `final_file_path` atomically, so a crash or power
+/// loss mid-write can't corrupt the existing file.
+///
+/// This works by writing to a hidden temp file next to `final_file_path`
+/// first, then atomically replacing the target with it.
+///
+/// # Arguments
+///
+/// * `toml_str` - The file contents to write.
+/// * `final_file_path` - The path the contents should end up at.
+///
+/// # Errors
+///
+/// Returns an error if the temp file can't be created or written, or if the
+/// atomic replace fails (e.g. due to permissions).
 pub fn write_atomic(toml_str: &str, final_file_path: &Path) -> Result<(), anyhow::Error> {
     let file_name = final_file_path
         .file_name()

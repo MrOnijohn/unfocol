@@ -34,6 +34,11 @@ pub const DEFAULT_STOPS: &[Stop] = &[
 ];
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Copy, Clone)]
+/// An RGB color, independent of any particular UI toolkit's color type.
+///
+/// Conversion to `egui::Color32` is provided via [`From`], and parsing from a
+/// CSS-style hex/named color string (e.g. `"#00cc00"`) is provided via
+/// [`std::str::FromStr`].
 pub struct Color {
     pub r: u8,
     pub g: u8,
@@ -69,19 +74,33 @@ impl std::str::FromStr for Color {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+/// A single color stop in a [`Theme`]'s gradient.
+///
+/// `progress` is a value in `0.0..=1.0` marking how far through the focus
+/// session this stop applies, and `color` is the color to use at that point.
+/// A theme's stops are traversed in order and interpolated between,
+/// according to its `InterpolationMethod`.
 pub struct Stop {
     pub color: Color,
     pub progress: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
+/// How a [`Theme`]'s color is computed between two [`Stop`]s.
+///
+/// Only [`InterpolationMethod::Lerp`] is currently implemented; the other
+/// variants exist for future use and will panic if selected.
 pub enum InterpolationMethod {
+    /// Linear interpolation of the `r`, `g`, and `b` channels independently.
     Lerp,
     LinearRGB, // Not implemented
     Oklab,     // Not implemented
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+/// A named color scheme: the idle color shown before a focus session starts,
+/// the clock overlay colors, and the gradient of [`Stop`]s the focus window
+/// moves through as the session progresses.
 pub struct Theme {
     pub stops: Vec<Stop>,
     pub idle: Color,
@@ -91,6 +110,16 @@ pub struct Theme {
 }
 
 impl Theme {
+    /// Builds a [`Theme`] from its parts.
+    ///
+    /// # Arguments
+    ///
+    /// * `stops` - The gradient stops, which should start at progress `0.0`
+    ///   and end at `1.0`.
+    /// * `idle` - The color shown while no focus session is running.
+    /// * `clock_bg` - The clock overlay's background color.
+    /// * `clock_digits` - The clock overlay's text color.
+    /// * `interpolation_method` - How to interpolate between `stops`.
     pub fn new(
         stops: Vec<Stop>,
         idle: Color,
@@ -107,6 +136,16 @@ impl Theme {
         }
     }
 
+    /// Returns the color for progress `t` through this theme's gradient.
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - Progress through the focus session, in `0.0..=1.0`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `interpolation_method` is not `InterpolationMethod::Lerp`,
+    /// since the other methods are not yet implemented.
     pub fn current_color(&self, t: f32) -> Color {
         match self.interpolation_method {
             InterpolationMethod::Lerp => Self::lerp(self, t),

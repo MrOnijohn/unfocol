@@ -8,12 +8,15 @@ use crate::Unfocol;
 use crate::message::Severity;
 
 impl Unfocol<fn() -> Instant> {
+    /// Shows a viewport listing all pending [`Message`](crate::Message)s, if
+    /// there are any, and clears them once the viewport is dismissed
+    /// (Escape or close).
     pub fn display_notifications(&mut self, ctx: &egui::Context) {
         if !self.messages.is_empty() {
             let viewport_id = ViewportId::from_hash_of("notifications");
             let builder = ViewportBuilder::default()
                 .with_app_id("se.johnkinell.Unfocol.Notifications")
-                .with_title("Unfocol settings")
+                .with_title("Unfocol notifications")
                 .with_active(true)
                 .with_decorations(true)
                 .with_close_button(true)

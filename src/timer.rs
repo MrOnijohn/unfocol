@@ -1,11 +1,18 @@
 use std::time::{Duration, Instant};
 
+/// A countdown timer for one focus session.
+///
+/// `clock` is injected rather than calling `Instant::now()` directly, so
+/// tests can drive time forward deterministically with
+/// [`new_with_fake_clock`](Timer::new_with_fake_clock).
 pub struct Timer<F: Fn() -> Instant> {
     pub clock: F,
     pub state: SessionState,
     pub focus_time: Duration,
 }
 
+/// Whether a [`Timer`] is counting down or stopped, and the data needed to
+/// compute [`Timer::remaining`] in either case.
 pub enum SessionState {
     Running {
         started_at: Instant,
@@ -17,6 +24,8 @@ pub enum SessionState {
 }
 
 impl Timer<fn() -> Instant> {
+    /// Creates an idle timer with `focus_time_in_minutes` of time remaining,
+    /// using the real system clock.
     pub fn new(focus_time_in_minutes: u32) -> Self {
         Self {
             clock: Instant::now,
@@ -41,6 +50,11 @@ impl Default for Timer<fn() -> Instant> {
 }
 
 impl<F: Fn() -> Instant> Timer<F> {
+    /// Creates an idle timer with `focus_time` remaining, using `clock`
+    /// instead of the real system clock.
+    ///
+    /// Intended for tests: pass a closure over a shared, manually-advanced
+    /// `Instant` so time can be moved forward deterministically.
     pub fn new_with_fake_clock(focus_time: Duration, clock: F) -> Self {
         Self {
             clock,
@@ -51,6 +65,12 @@ impl<F: Fn() -> Instant> Timer<F> {
         }
     }
 
+    /// Moves the timer from `SessionState::Idle` to `SessionState::Running`,
+    /// resuming from whatever time was remaining.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the timer is already running.
     pub fn start(&mut self) {
         match self.state {
             SessionState::Idle { remaining_time } => {
@@ -63,6 +83,12 @@ impl<F: Fn() -> Instant> Timer<F> {
         }
     }
 
+    /// Moves the timer from `SessionState::Running` to `SessionState::Idle`,
+    /// freezing the remaining time so [`start`](Self::start) can resume it later.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the timer is already idle.
     pub fn pause(&mut self) {
         match self.state {
             SessionState::Running { .. } => {
@@ -76,12 +102,18 @@ impl<F: Fn() -> Instant> Timer<F> {
         }
     }
 
+    /// Moves the timer to `SessionState::Idle` with the full `focus_time`
+    /// remaining, discarding any progress made in the current session.
     pub fn reset(&mut self) {
         self.state = SessionState::Idle {
             remaining_time: self.focus_time,
         };
     }
 
+    /// Returns the time left in the current session.
+    ///
+    /// While running, this is computed from `clock()` and the time the
+    /// session started; while idle, it's the frozen remaining time.
     pub fn remaining(&self) -> Duration {
         match self.state {
             SessionState::Running {
@@ -92,6 +124,13 @@ impl<F: Fn() -> Instant> Timer<F> {
         }
     }
 
+    /// Returns how far through the session we are, as a value in `0.0..=1.0`,
+    /// where `0.0` is just started and `1.0` is time up.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the timer is idle, since progress is meaningless outside of
+    /// a running session.
     pub fn progress(&self) -> f32 {
         match self.state {
             SessionState::Idle { .. } => {
@@ -106,6 +145,10 @@ impl<F: Fn() -> Instant> Timer<F> {
         }
     }
 
+    /// Resets the timer to idle once a running session's time has run out.
+    ///
+    /// Call this once per frame; it's a no-op unless the running session has
+    /// actually reached zero remaining time.
     pub fn update_state(&mut self) {
         if self.remaining().is_zero() && self.is_running() {
             self.reset()
@@ -121,6 +164,8 @@ impl<F: Fn() -> Instant> Timer<F> {
         matches!(self.state, SessionState::Idle { .. })
     }
 
+    /// [`start`](Self::start)s the timer if idle, or [`pause`](Self::pause)s
+    /// it if running.
     pub fn toggle(&mut self) {
         match self.state {
             SessionState::Running { .. } => self.pause(),

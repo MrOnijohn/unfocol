@@ -10,9 +10,17 @@ use directories::{BaseDirs, ProjectDirs};
 use thiserror::Error;
 use crate::settings::write_atomic;
 
+/// The built-in themes, bundled at compile time from `assets/themes.toml`.
+///
+/// This is what gets written to disk the first time `themes.toml` doesn't
+/// exist yet (see [`ensure_themes_toml_exists`]).
 pub const DEFAULT_THEMES: &str = include_str!("../assets/themes.toml");
 const DEFAULT_THEME_TOML: &str = include_str!("../assets/default_theme.toml");
+/// The name reserved for the built-in default theme, which [`load_themes`]
+/// always inserts, overwriting any user-defined theme with the same name.
 pub const DEFAULT_THEME: &str = "default";
+/// Path, relative to Omarchy's state directory, of the symlink that points
+/// at the currently active Omarchy theme's directory.
 pub const OMARCHY_CURRENT: &str = "omarchy/current";
 
 #[derive(Serialize, Deserialize)]
@@ -21,6 +29,7 @@ struct RawStop {
     progress: f32,
 }
 
+/// Why a raw, deserialized TOML stop failed to convert into a [`Stop`].
 #[derive(Error, Debug)]
 pub enum ParseStopError {
     #[error("Invalid progress value {value}")]
@@ -66,6 +75,7 @@ struct RawTheme {
     stops: Vec<RawStop>,
 }
 
+/// Why a raw, deserialized TOML theme failed to convert into a [`Theme`].
 #[derive(Error, Debug)]
 pub enum ParseThemeError {
     #[error("Invalid color value for idle: {idle_hex}")]
@@ -177,13 +187,30 @@ struct RawConfig {
     themes: HashMap<String, RawTheme>,
 }
 
+/// When to show the remaining-time clock overlay.
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub enum ShowClock {
+    /// Never show the clock.
     Never,
+    /// Always show the clock.
     Always,
+    /// Only show the clock while the mouse is hovering the focus window.
     OnMouseOver,
 }
 
+impl std::fmt::Display for ShowClock {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let label = match self {
+            ShowClock::Never => "Never",
+            ShowClock::Always => "Always",
+            ShowClock::OnMouseOver => "On mouse over",
+        };
+        write!(f, "{label}")
+    }
+}
+
+/// The user's persisted preferences, read from and written to
+/// `settings.toml`.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Settings {
     pub show_settings: bool,
@@ -207,6 +234,8 @@ impl Default for Settings {
     }
 }
 
+/// The application's full configuration: all loaded themes plus the user's
+/// settings, including which theme is selected.
 #[derive(Serialize)]
 pub struct Config {
     pub themes: HashMap<String, Theme>,
@@ -214,6 +243,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Builds a [`Config`] from already-loaded themes and settings.
     pub fn new(themes: HashMap<String, Theme>, settings: Settings) -> Self {
         Self { themes, settings }
     }
@@ -228,6 +258,12 @@ impl Default for Config {
     }
 }
 
+/// Returns Unfocol's config directory, creating it if it doesn't exist yet.
+///
+/// # Panics
+///
+/// Panics if the OS has no usable home directory, or if the directory
+/// couldn't be created.
 pub fn get_or_create_config_dir() -> PathBuf {
     if let Some(proj_dir) = ProjectDirs::from("se", "johnkinell", "Unfocol") {
         create_dir_all(proj_dir.config_dir()).expect("Could not create config directory");
@@ -237,12 +273,20 @@ pub fn get_or_create_config_dir() -> PathBuf {
     }
 }
 
-pub fn ensure_themes_toml_exists(themes_toml: &Path, config_dir: &Path) -> Result<(), anyhow::Error> {
+/// Writes [`DEFAULT_THEMES`] to `themes_toml` if no file exists there yet.
+///
+/// # Arguments
+///
+/// * `themes_toml` - Where the themes file should live.
+///
+/// # Errors
+///
+/// Returns an error if the file doesn't exist and couldn't be written.
+pub fn ensure_themes_toml_exists(themes_toml: &Path) -> Result<(), anyhow::Error> {
     if !themes_toml.exists() {
         info!("No themes.toml file found, creating default.");
         let toml_str = DEFAULT_THEMES;
-        let final_file_path = config_dir.join("themes.toml");
-        write_atomic(toml_str, &final_file_path)?;
+        write_atomic(toml_str, themes_toml)?;
         Ok(())
     } else {
         info!("Found themes.toml");
@@ -251,6 +295,7 @@ pub fn ensure_themes_toml_exists(themes_toml: &Path, config_dir: &Path) -> Resul
 }
 
 
+/// Why [`load_themes`] failed to read or parse a theme.
 #[derive(Error, Debug)]
 pub enum LoadThemesError {
     #[error("Failed to read themes.toml")]
@@ -271,6 +316,37 @@ pub enum LoadThemesError {
     OmarchyRelated(#[from] OmarchyThemeError),
 }
 
+/// Loads all themes from the user's `themes.toml`, merges in the built-in
+/// `default` theme, and adds an `"Omarchy"` theme when running under Omarchy.
+///
+/// Parsing is best-effort: a theme that fails to parse is skipped and its
+/// error is collected rather than aborting the whole load, so the caller
+/// always gets back whatever themes *did* parse successfully.
+///
+/// # Arguments
+///
+/// * `themes_toml` - Path to the `themes.toml` file to read.
+///
+/// # Returns
+///
+/// A tuple of:
+/// * The loaded themes, keyed by name. This always contains at least the
+///   `"default"` theme, since it is inserted after parsing (overwriting any
+///   user-defined theme also named `"default"`).
+/// * Any errors encountered while reading or parsing, e.g. an unreadable
+///   file, invalid TOML, or an individual theme that failed validation.
+///
+/// # Examples
+///
+/// ```no_run
+/// use unfocol::load_themes;
+///
+/// let (themes, errors) = load_themes("themes.toml");
+/// for error in &errors {
+///     eprintln!("Problem loading a theme: {error}");
+/// }
+/// assert!(themes.contains_key("default"));
+/// ```
 pub fn load_themes(
     themes_toml: impl AsRef<Path>,
 ) -> (HashMap<String, Theme>, Vec<LoadThemesError>) {
@@ -356,17 +432,26 @@ fn default_theme() -> Theme {
         .expect("Default theme missing from default_theme.toml")
 }
 
+/// Returns the path to Omarchy's "current theme" symlink
+/// (`OMARCHY_CURRENT`) inside the OS state directory, or `None` if there
+/// is no usable state directory (e.g. no home directory).
+///
+/// This does not check whether the path actually exists — it will not, on
+/// systems that aren't running Omarchy.
 pub fn omarchy_current() -> Option<PathBuf> {
     Some(BaseDirs::new()?
         .state_dir()?
         .join(OMARCHY_CURRENT))
 }
 
+/// Returns the path to the active Omarchy theme's `colors.toml`, or `None`
+/// if [`omarchy_current`] can't determine a state directory.
 pub fn omarchy_colors_toml() -> Option<PathBuf> {
     let omarchy_colors_toml_path_str = "theme/colors.toml";
     Some(omarchy_current()?.join(omarchy_colors_toml_path_str))
 }
 
+/// Why [`omarchy_theme`] failed to build a theme from Omarchy's `colors.toml`.
 #[derive(Error, Debug)]
 pub enum OmarchyThemeError {
     #[error(transparent)]
@@ -379,6 +464,20 @@ pub enum OmarchyThemeError {
     ColorParsing(#[from] csscolorparser::ParseColorError),
 }
 
+/// Builds a [`Theme`] from an Omarchy `colors.toml` file.
+///
+/// Maps a handful of Omarchy palette colors (falling back between a couple
+/// of alternative names for each, e.g. `green`/`color2`) onto a fixed
+/// four-stop gradient plus an idle color and clock colors.
+///
+/// # Arguments
+///
+/// * `path` - Path to the Omarchy theme's `colors.toml`.
+///
+/// # Errors
+///
+/// Returns an error if the file can't be read or parsed, or if any of the
+/// required colors are missing or malformed.
 pub fn omarchy_theme(path: PathBuf) -> Result<Theme, OmarchyThemeError> {
     let toml_str = get_toml_as_str(path)?;
     let colors_table: HashMap<String, String> = toml::from_str(&toml_str)?;
@@ -445,6 +544,7 @@ fn return_color(colors_table: &HashMap<String, String>, color_names: &[&str]) ->
     Ok(None)
 }
 
+/// Why [`load_settings`] failed to read or parse `settings.toml`.
 #[derive(Error, Debug)]
 pub enum LoadSettingsError {
     #[error("Failed to read settings.toml")]
@@ -453,6 +553,10 @@ pub enum LoadSettingsError {
     ParseTomlFailed(#[from] toml::de::Error),
 }
 
+/// A single automatic fix applied by [`sanitize_selected_theme`] or
+/// [`load_settings`] when a loaded setting was out of range or otherwise
+/// invalid. Each variant's `Display` message (via `displaydoc`) is shown
+/// to the user.
 #[derive(Debug, Display)]
 pub enum SettingsCorrection {
     /// The focus_time value was out of bounds ({value}), corrected to 25.
@@ -461,16 +565,38 @@ pub enum SettingsCorrection {
     InvalidSelectedTheme { non_existing_theme: String },
 }
 
+/// What happened while [`load_settings`] tried to load `settings.toml`,
+/// for building a startup [`Message`](crate::Message) if one is warranted.
 pub enum SettingsLoadingOutcome {
+    /// `settings.toml` was read and parsed, possibly with some
+    /// `SettingsCorrection`s applied to bring values into range.
     ParsedAndLoaded {
         corrections: Vec<SettingsCorrection>,
     },
+    /// `settings.toml` existed but couldn't be read or parsed, so defaults
+    /// were used instead.
     Defaulted {
         load_settings_error: LoadSettingsError,
     },
+    /// `settings.toml` didn't exist yet, i.e. this is the first run.
     FirstRun,
 }
 
+/// Loads settings from `settings_toml`, falling back to [`Settings::default`]
+/// if the file is missing, unreadable, or fails to parse.
+///
+/// Loaded settings are also sanitized (e.g. an out-of-range `focus_time` is
+/// corrected), whereas defaulted or first-run settings need no sanitizing
+/// since they're already valid.
+///
+/// # Arguments
+///
+/// * `settings_toml` - Path to the settings file to read.
+///
+/// # Returns
+///
+/// A tuple of the settings to use, and a [`SettingsLoadingOutcome`]
+/// describing what happened, for building a startup message from.
 pub fn load_settings(settings_toml: impl AsRef<Path>) -> (Settings, SettingsLoadingOutcome) {
     match try_load_settings(settings_toml) {
         Ok(settings) => {
@@ -525,6 +651,18 @@ fn sanitize_settings(mut settings: Settings) -> (Settings, Vec<SettingsCorrectio
     }
 }
 
+/// Falls back to [`DEFAULT_THEME`] if `settings.selected_theme` doesn't name
+/// a theme actually present in `themes`.
+///
+/// # Arguments
+///
+/// * `settings` - The settings to check and, if needed, correct.
+/// * `themes` - The themes that were actually loaded.
+///
+/// # Returns
+///
+/// The (possibly corrected) settings, and a `SettingsCorrection` if a
+/// correction was needed.
 pub fn sanitize_selected_theme(
     mut settings: Settings,
     themes: &HashMap<String, Theme>,

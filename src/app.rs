@@ -13,6 +13,11 @@ use crate::{Message, Theme};
 
 const DEBOUNCE: Duration = Duration::from_millis(150);
 
+/// Watches Omarchy's `colors.toml` for changes and, once a burst of file
+/// events settles, signals that the "Omarchy" theme should be rebuilt.
+///
+/// Events are debounced (see `DEBOUNCE`) since a theme switch touches the
+/// file multiple times in quick succession.
 pub struct OmarchyWatcher {
     // Held only so its Drop doesn't run — dropping it stops the watch.
     _watcher: RecommendedWatcher,
@@ -22,6 +27,18 @@ pub struct OmarchyWatcher {
 }
 
 impl OmarchyWatcher {
+    /// Starts watching `path` for changes, requesting a repaint on `ctx`
+    /// whenever an event fires.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The file or directory to watch, recursively.
+    /// * `ctx` - The egui context to wake up on each change event.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the underlying OS watch could not be set up, e.g.
+    /// because `path` does not exist.
     pub fn new(path: &Path, ctx: egui::Context) -> Result<Self, notify::Error> {
         let (tx, rx) = channel();
 
@@ -55,11 +72,18 @@ impl OmarchyWatcher {
         }
     }
 
+    /// True while a debounce window is running, i.e. a change was seen but
+    /// [`should_reload`](Self::should_reload) hasn't yet returned `true` for it.
     pub fn is_pending(&self) -> bool {
         self.pending.is_some()
     }
 }
 
+/// The application's top-level state, and the [`eframe::App`] that egui
+/// drives each frame.
+///
+/// `F` is the clock function type used by `timer` — see [`Timer`] — and is
+/// fixed to `fn() -> Instant` (the real system clock) outside of tests.
 pub struct Unfocol<F: Fn() -> Instant> {
     pub timer: Timer<F>,
     pub settings_t: f32,
@@ -72,6 +96,16 @@ pub struct Unfocol<F: Fn() -> Instant> {
 }
 
 impl Unfocol<fn() -> Instant> {
+    /// Builds the initial application state.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - The loaded themes and settings.
+    /// * `config_dir` - Directory settings are saved back to.
+    /// * `messages` - Any startup notifications (load errors, welcome
+    ///   message, etc.) to show immediately.
+    /// * `omarchy_watcher` - The Omarchy `colors.toml` watcher, if running
+    ///   under Omarchy and one could be set up.
     pub fn new(config: Config, config_dir: PathBuf, messages: Vec<Message>, omarchy_watcher: Option<OmarchyWatcher>) -> Self {
         Self {
             timer: Timer::new(config.settings.focus_time),
@@ -134,6 +168,7 @@ impl Unfocol<fn() -> Instant> {
         }
     }
 
+    /// Returns the currently selected [`Theme`].
     pub fn active_theme(&self) -> &Theme {
         &self.config.themes[&self.config.settings.selected_theme]
     }

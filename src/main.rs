@@ -11,7 +11,7 @@ fn main() -> eframe::Result {
     info!("Setting up configuration paths");
     let config_dir = get_or_create_config_dir();
     let themes_toml = config_dir.join("themes.toml");
-    ensure_themes_toml_exists(&themes_toml, &config_dir).expect("Could not create themes.toml");
+    ensure_themes_toml_exists(&themes_toml).expect("Could not create themes.toml");
     let settings_toml = config_dir.join("settings.toml");
 
     info!("Loading themes from {}", themes_toml.display());

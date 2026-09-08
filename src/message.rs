@@ -19,35 +19,46 @@ fn correct_hex_code_and_restart() -> &'static str {
     "Correct hex code and restart to try again."
 }
 
+/// How urgently a [`Message`] should be presented to the user.
 pub enum Severity {
     Error,
     Warning,
     Info,
 }
+
+/// A user-facing notification, shown in the notifications viewport (see
+/// [`display_notifications`](crate::Unfocol::display_notifications)).
 pub struct Message {
     pub severity: Severity,
     pub message: String,
 }
 
 impl Message {
+    /// An informational message shown on first run (or whenever
+    /// `show_welcome_message` is enabled), explaining the keyboard controls.
     pub fn welcome_message() -> Self {
         let message = "Welcome to Unfocol!\nPress Space to start or pause focus timer, R to reset, S for Settings and Q to quit.\nDisable this message in settings.".to_string();
         let severity = Severity::Info;
         Self { message, severity }
     }
 
+    /// An informational message shown when a focus session's time runs out.
     pub fn time_is_up() -> Self {
         let message = "Focus time is up!".to_string();
         let severity = Severity::Info;
         Self { message, severity}
     }
 
+    /// A warning shown when writing `settings.toml` to disk fails.
     pub fn save_settings_failed() -> Self {
         let message = "Failed to save settings to disk, your changes might not persist. Check free space and file permissions.".to_string();
         let severity = Severity::Warning;
         Self { severity, message }
     }
 
+    /// Builds a user-facing message explaining a `LoadThemesError` returned
+    /// by [`load_themes`](crate::load_themes), including advice on how to
+    /// fix it where applicable.
     pub fn from_load_themes_error(error: LoadThemesError) -> Self {
         match error {
             LoadThemesError::FileUnreadable { file, io_error } => {
@@ -118,6 +129,12 @@ impl Message {
         }
     }
 
+    /// Builds a user-facing message from a
+    /// [`SettingsLoadingOutcome`](crate::SettingsLoadingOutcome), if that
+    /// outcome is worth telling the user about.
+    ///
+    /// Returns `None` for [`SettingsLoadingOutcome::FirstRun`] and for a
+    /// successful load with no corrections, since there's nothing to report.
     pub fn from_settings_loading_outcome(outcome: SettingsLoadingOutcome) -> Option<Self> {
         match outcome {
             SettingsLoadingOutcome::ParsedAndLoaded { corrections } => {
@@ -162,6 +179,8 @@ impl Message {
         }
     }
 
+    /// Builds a warning explaining a single `SettingsCorrection` that was
+    /// applied to the user's settings.
     pub fn from_settings_correction(correction: SettingsCorrection) -> Self {
         Self {
             message: format!(
@@ -172,6 +191,8 @@ impl Message {
         }
     }
 
+    /// Builds an error message explaining why loading the Omarchy theme
+    /// failed.
     // TODO! Make the messages more friendly for the end user
     pub fn from_omarchy_theme_error(omarchy_theme_error: OmarchyThemeError) -> Self {
         let message = match omarchy_theme_error {
