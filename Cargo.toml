@@ -1,12 +1,20 @@
 [package]
 name = "unfocol"
-version = "0.1.0"
+version = "2.0.0"
 edition = "2024"
 
 [dependencies]
-unfocol-utils = { path = "unfocol-utils" }
-crossterm = "0.29"
-ratatui = "0.29.0"
-dirs = "6.0.0"
+eframe = { version = "0.34.2", features = ["glow"] }
+anyhow = "1.0.102"
+atomicwrites = "0.4.4"
+csscolorparser = "0.8.3"
+directories = "6.0.0"
+egui_extras = "0.34.2"
+egui-modal = "0.6.0"
+env_logger = "0.11.10"
+log = "0.4.29"
+serde = { version = "1.0.228", features = ["derive"] }
+toml = "1.1.2"
+thiserror = "2.0.18"
+displaydoc = "0.2.6"
 notify = "8.2.0"
-anyhow = "1.0.100"

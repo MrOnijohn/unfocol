@@ -1,0 +1,18 @@
+[themes.default]
+idle = "#00cccc"
+
+[[themes.default.stops]]
+progress = 0.0
+color = "#00cc00"
+
+[[themes.default.stops]]
+progress = 0.5
+color = "#cccc00"
+
+[[themes.default.stops]]
+progress = 0.833
+color = "#cc0000"
+
+[[themes.default.stops]]
+progress = 1.0
+color = "#000000"

@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=Unfocol
-Comment=Unfocused Focus timer
-Exec=unfocol
-Terminal=true
-Type=Application
-Icon=unfocol
-Categories=Utility;

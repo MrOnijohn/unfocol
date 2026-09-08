@@ -1,0 +1,109 @@
+# Default theme, fallback
+[themes.default]
+idle = "#00cccc"
+
+[[themes.default.stops]]
+progress = 0.0
+color = "#00cc00"
+
+[[themes.default.stops]]
+progress = 0.5
+color = "#cccc00"
+
+[[themes.default.stops]]
+progress = 0.833
+color = "#cc0000"
+
+[[themes.default.stops]]
+progress = 1.0
+color = "#000000"
+
+# From black to white, with magenta as idle
+[themes.black_white]
+idle = "#ff00ff"
+
+[[themes.black_white.stops]]
+progress = 0.0
+color = "#000000"
+
+[[themes.black_white.stops]]
+progress = 1.0
+color = "#ffffff"
+
+# From orange to teal over powder blue with orchid as idle
+[themes.orange_teal]
+idle = "#da70d6"
+
+[[themes.orange_teal.stops]]
+progress = 0.0
+color = "#ffa500"
+
+[[themes.orange_teal.stops]]
+progress = 0.5
+color = "#b0e0e6"
+
+[[themes.orange_teal.stops]]
+progress = 1.0
+color = "#008080"
+
+# Nord
+[themes.nord]
+idle = "#88c0d0" # nord8
+clock_bg = "#3b4252" # nord1
+clock_digits = "#eceff4" # nord6
+
+[[themes.nord.stops]]
+progress = 0.0
+color = "#a3be8c" # nord14
+
+[[themes.nord.stops]]
+progress = 0.5
+color = "#ebcb8b" # nord12
+
+[[themes.nord.stops]]
+progress = 0.833
+color = "#bf616a" # nord11
+
+[[themes.nord.stops]]
+progress = 1.0
+color = "#2e3440" # nord0
+
+# Catpuccin latte
+[themes.catpuccin_latte]
+idle = "#179299" # Teal
+
+[[themes.catpuccin_latte.stops]]
+progress = 0.0
+color = "#40a02b" # Green
+
+[[themes.catpuccin_latte.stops]]
+progress = 0.5
+color = "#df8e1d" # Yellow
+
+[[themes.catpuccin_latte.stops]]
+progress = 0.833
+color = "#d20f39" # Red
+
+[[themes.catpuccin_latte.stops]]
+progress = 1.0
+color = "#4c4f69" # Text
+
+# Gruvbox dark
+[themes.gruvbox_dark]
+idle = "#83a598" # blue
+
+[[themes.gruvbox_dark.stops]]
+progress = 0.0
+color = "#b8bb26" # green
+
+[[themes.gruvbox_dark.stops]]
+progress = 0.5
+color = "#fabd2f" # yellow
+
+[[themes.gruvbox_dark.stops]]
+progress = 0.833
+color = "#fb4934" # red
+
+[[themes.gruvbox_dark.stops]]
+progress = 1.0
+color = "#282828" # bg
