@@ -1,10 +1,9 @@
 [package]
 name = "unfocol"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2024"
 
 [dependencies]
-eframe = { version = "0.34.2", features = ["glow"] }
 anyhow = "1.0.102"
 atomicwrites = "0.4.4"
 csscolorparser = "0.8.3"
@@ -18,3 +17,9 @@ toml = "1.1.2"
 thiserror = "2.0.18"
 displaydoc = "0.2.6"
 notify = "8.2.0"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+eframe = { version = "0.34.2", default-features = false, features = ["glow", "default_fonts", "persistence", "accesskit"] }
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+eframe = { version = "0.34.2", default-features = false, features = ["wgpu", "default_fonts", "persistence", "accesskit"] }
