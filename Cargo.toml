@@ -1,6 +1,6 @@
 [package]
 name = "unfocol"
-version = "2.0.1"
+version = "2.0.2"
 edition = "2024"
 
 [dependencies]
@@ -19,7 +19,7 @@ displaydoc = "0.2.6"
 notify = "8.2.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-eframe = { version = "0.34.2", default-features = false, features = ["glow", "default_fonts", "persistence", "accesskit"] }
+eframe = { version = "0.34.2", default-features = false, features = ["glow", "default_fonts", "persistence", "accesskit", "wayland"] }
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 eframe = { version = "0.34.2", default-features = false, features = ["wgpu", "default_fonts", "persistence", "accesskit"] }
