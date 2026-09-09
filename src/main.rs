@@ -50,6 +50,19 @@ fn main() -> eframe::Result {
 
     let config = Config::new(themes, settings);
 
+    let renderer = {
+        #[cfg(target_os = "linux")]
+        {
+            info!("Linux detected, choosing Glow as renderer");
+            Renderer::Glow
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            info!("Choosing Wgpu as renderer");
+            Renderer::Wgpu
+        }
+    };
+
     info!("Starting app");
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -61,13 +74,7 @@ fn main() -> eframe::Result {
             .with_resizable(true)
             .with_movable_by_background(true),
         persist_window: true,
-        renderer: if cfg!(target_os = "linux") {
-            info!("Linux detected, choosing Glow as renderer");
-            Renderer::Glow
-        } else {
-            info!("Choosing Wgpu as renderer");
-            Renderer::Wgpu
-        },
+        renderer,
         ..Default::default()
     };
     eframe::run_native(
